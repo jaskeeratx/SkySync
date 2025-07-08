@@ -1,9 +1,37 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:weather_app/.env';
+import 'package:weather_app/Components/detail_card.dart';
 import 'package:weather_app/Components/heading.dart';
 import 'package:weather_app/Components/weather_card.dart';
+import 'package:http/http.dart' as http;
 
-class WeatherScreen extends StatelessWidget {
+class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
+
+  @override
+  State<WeatherScreen> createState() => _WeatherScreenState();
+}
+
+class _WeatherScreenState extends State<WeatherScreen> {
+  @override
+  void initState() {
+    super.initState();
+    getWeatherApi();
+  }
+
+  Future getWeatherApi() async {
+    String cityName = 'India';
+    final res = await http.get(
+      Uri.parse(
+        "https://api.openweathermap.org/data/2.5/weather?q=$cityName&APPID=$api_key",
+      ),
+    );
+
+    print(res.body);
+  }
+
   @override
   Widget build(BuildContext context) {
     double temperature = 0.00;
@@ -18,7 +46,12 @@ class WeatherScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Icon(Icons.refresh, color: Colors.white),
+            child: IconButton(
+              onPressed: () {
+                getWeatherApi();
+              },
+              icon: Icon(Icons.refresh),
+            ),
           ),
         ],
       ),
@@ -29,38 +62,42 @@ class WeatherScreen extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 16, right: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.rectangle,
-                  color: const Color.fromRGBO(50, 41, 41, 1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              child: SizedBox(
                 height: 230,
                 width: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${temperature.toString()}`F',
+                child: Card(
+                  elevation: 16,
+                  child: ClipRRect(
+                    borderRadius: BorderRadiusGeometry.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${temperature.toString()}`F',
 
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Icon(Icons.cloud, size: 72),
+                            Text(
+                              'Rain',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Icon(Icons.cloud, size: 72),
-                      Text(
-                        'Rain',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -70,15 +107,18 @@ class WeatherScreen extends StatelessWidget {
               child: heading(heading1),
             ),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                weatherCard(time, temperature),
-                weatherCard(time, temperature),
-                weatherCard(time, temperature),
-                weatherCard(time, temperature),
-                weatherCard(time, temperature),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  weatherCard(time, temperature),
+                  weatherCard(time, temperature),
+                  weatherCard(time, temperature),
+                  weatherCard(time, temperature),
+                  weatherCard(time, temperature),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 16.0, left: 4, bottom: 8),
@@ -98,17 +138,6 @@ class WeatherScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Column detailCard(IconData icon, String weather, double temp) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Icon(icon, size: 42),
-        Text(weather, style: TextStyle(fontSize: 16)),
-        Text(temp.toString(), style: TextStyle(fontWeight: FontWeight.bold)),
-      ],
     );
   }
 }
