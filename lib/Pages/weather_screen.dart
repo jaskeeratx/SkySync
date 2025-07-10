@@ -16,20 +16,9 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  double temp = 0;
-  bool isLoading = false;
-  @override
-  void initState() {
-    super.initState();
-    getWeatherApi();
-  }
+  Future<Map<String, dynamic>> getWeatherApi() async {
+    String cityName = 'Delhi';
 
-  Future getWeatherApi() async {
-    String cityName = 'London';
-    setState(() {
-      isLoading = true;
-    });
-    // final data;
     try {
       final res = await http.get(
         Uri.parse(
@@ -38,14 +27,10 @@ class _WeatherScreenState extends State<WeatherScreen> {
       );
       final data = jsonDecode(res.body);
 
-      if (data['cod'] == '200') {
-        setState(() {
-          temp = data['list'][0]['main']['temp'];
-          isLoading = false;
-        });
-      } else {
-        throw ("not 200 some kind of error");
+      if (data['cod'] != '200') {
+        throw (data[0]['message']);
       }
+      return data;
     } catch (e) {
       throw (e.toString());
     }
@@ -53,8 +38,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double temperature = 0.00;
-    String time = '9:00';
     String heading1 = 'Weather Forecast';
     return Scaffold(
       appBar: AppBar(
@@ -67,107 +50,161 @@ class _WeatherScreenState extends State<WeatherScreen> {
             padding: const EdgeInsets.all(8.0),
             child: IconButton(
               onPressed: () {
-                getWeatherApi();
+                setState(() {});
               },
               icon: Icon(Icons.refresh),
             ),
           ),
         ],
       ),
-      body: isLoading == true
-          ? Center(child: SizedBox(width: 60, child: LinearProgressIndicator()))
-          : Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 16),
-                    child: SizedBox(
-                      height: 230,
-                      width: double.infinity,
-                      child: Card(
-                        elevation: 16,
-                        child: ClipRRect(
-                          borderRadius: BorderRadiusGeometry.circular(16),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '${temp.toString()}`F',
+      body: FutureBuilder(
+        future: getWeatherApi(),
 
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: SizedBox(width: 50, child: LinearProgressIndicator()),
+            );
+          }
+          if (snapshot.hasError) {
+            return Text(snapshot.error.toString());
+          }
+
+          final data = snapshot.data!;
+          final weatherData = data['list'][0];
+          final weatherTemp = weatherData['main']['temp'];
+          final weatherIcon = weatherData['weather'][0]['main'];
+          final pressure = weatherData['main']['pressure'];
+          final humidity = weatherData['main']['humidity'];
+          final windSpeed = weatherData['wind']['speed'];
+
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16),
+                  child: SizedBox(
+                    height: 230,
+                    width: double.infinity,
+                    child: Card(
+                      elevation: 16,
+                      child: ClipRRect(
+                        borderRadius: BorderRadiusGeometry.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${weatherTemp.toString()}`F',
+
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  Icon(Icons.cloud, size: 72),
-                                  Text(
-                                    'Rain',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.white,
-                                    ),
+                                ),
+
+                                Icon(
+                                  weatherIcon == 'Clouds' ||
+                                          weatherIcon == 'Rain'
+                                      ? Icons.cloud
+                                      : Icons.sunny,
+                                  size: 72,
+                                ),
+                                Text(
+                                  weatherIcon,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.white,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: 16.0,
-                      left: 4,
-                      bottom: 8,
-                    ),
-                    child: heading(heading1),
-                  ),
-
-                  SingleChildScrollView(
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0, left: 4, bottom: 8),
+                  child: heading(heading1),
+                ),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        weatherCard(time, temperature),
-                        weatherCard(time, temperature),
-                        weatherCard(time, temperature),
-                        weatherCard(time, temperature),
-                        weatherCard(time, temperature),
-                      ],
-                    ),
+                    itemCount: 5,
+                    itemBuilder: (BuildContext context, int index) {
+                      return weatherCard(
+                        time: data['list'][index + 1]['dt'].toString(),
+                        temperature: data['list'][index + 1]['main']['temp'],
+                        weatherIcon:
+                            data['list'][index + 1]['weather'][0]['main'] ==
+                                'Rain'
+                            ? Icons.cloud
+                            : Icons.sunny,
+                      );
+                    },
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: 16.0,
-                      left: 4,
-                      bottom: 8,
-                    ),
-                    child: heading('Additional Information'),
+                ),
+
+                // SingleChildScrollView(
+                //   scrollDirection: Axis.horizontal,
+                //   child: Row(
+                //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                //     children: [
+                //       for (int i = 0; i < 5; i++)
+                //         weatherCard(
+                //           time: data['list'][i + 1]['dt'].toString(),
+                //           temperature: data['list'][i + 1]['main']['temp'],
+                //           weatherIcon:
+                //               data['list'][i + 1]['weather'][0]['main'] ==
+                //                   'Rain'
+                //               ? Icons.cloud
+                //               : Icons.sunny,
+                //         ),
+                //     ],
+                //   ),
+                // ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0, left: 4, bottom: 8),
+                  child: heading('Additional Information'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      detailCard(
+                        Icons.water_drop,
+                        'Humidity',
+                        humidity.toString(),
+                      ),
+                      detailCard(
+                        Icons.speed,
+                        'WindSpeed',
+                        windSpeed.toString(),
+                      ),
+                      detailCard(
+                        Icons.umbrella_rounded,
+                        'Pressure',
+                        pressure.toString(),
+                      ),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        detailCard(Icons.water_drop, 'Humidity', 95),
-                        detailCard(Icons.speed, 'WindSpeed', 7.67),
-                        detailCard(Icons.umbrella_rounded, 'Humidity', 1006),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          );
+        },
+      ),
     );
   }
 }
